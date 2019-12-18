@@ -17,15 +17,15 @@ export default class Module {
   get namespaced () {
     return !!this._rawModule.namespaced
   }
-
+  // 添加子模块
   addChild (key, module) {
     this._children[key] = module
   }
-
+  // 删除子模块
   removeChild (key) {
     delete this._children[key]
   }
-
+  // 获取子模块
   getChild (key) {
     return this._children[key]
   }
@@ -43,6 +43,8 @@ export default class Module {
     }
   }
 
+  // 遍历子模块所有的module， 通过callback带回
+  // callback(module, key)
   forEachChild (fn) {
     forEachValue(this._children, fn)
   }

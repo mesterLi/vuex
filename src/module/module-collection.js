@@ -31,6 +31,7 @@ export default class ModuleCollection {
     }
 
     const newModule = new Module(rawModule, runtime)
+    // 如果没有根模块，创建根模块
     if (path.length === 0) {
       this.root = newModule
     } else {
@@ -39,6 +40,7 @@ export default class ModuleCollection {
     }
 
     // register nested modules
+    // 循环modules注册
     if (rawModule.modules) {
       forEachValue(rawModule.modules, (rawChildModule, key) => {
         this.register(path.concat(key), rawChildModule, runtime)

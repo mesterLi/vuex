@@ -6,7 +6,7 @@ Vue.use(Vuex)
 // root state object.
 // each Vuex instance is just a single state tree.
 const state = {
-  count: 0
+  vc: 0
 }
 
 // mutations are operations that actually mutates the state.
@@ -50,9 +50,40 @@ const getters = {
 
 // A Vuex instance is created by combining the state, mutations, actions,
 // and getters.
-export default new Vuex.Store({
+const store = new Vuex.Store({
   state,
   getters,
   actions,
-  mutations
+  mutations,
+  modules: {
+    test: {
+      namespaced: true,
+      state: {
+        count: 0
+      },
+      actions,
+      mutations,
+      modules: {
+        test2: {
+          namespaced: true,
+          state: {
+            vb: 1
+          },
+          actions,
+          mutations
+        }
+      }
+    }
+  }
 })
+store.subscribeAction({
+  before: function (actions, state) {
+    console.log('beforeActions', actions)
+    console.log('beforeState', state)
+  },
+  after: function (actions, state) {
+    console.log('afterActions', actions)
+    console.log('afterState', state)
+  }
+})
+export default store

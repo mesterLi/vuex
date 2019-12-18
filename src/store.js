@@ -31,7 +31,9 @@ export class Store {
     this._actionSubscribers = []
     this._mutations = Object.create(null)
     this._wrappedGetters = Object.create(null)
+    // 生成根modules
     this._modules = new ModuleCollection(options)
+    console.log('this._modules', this._modules)
     this._modulesNamespaceMap = Object.create(null)
     this._subscribers = []
     this._watcherVM = new Vue()
@@ -55,7 +57,10 @@ export class Store {
     // init root module.
     // this also recursively registers all sub-modules
     // and collects all module getters inside this._wrappedGetters
+    // 动态注册新的module时调用Vue.set更新状态
+    // 包装mutations、actions、getters 使其调用时会有正确的参数传入
     installModule(this, state, [], this._modules.root)
+    // console.log('this._modules', this._modules)
 
     // initialize the store vm, which is responsible for the reactivity
     // (also registers _wrappedGetters as computed properties)
@@ -144,7 +149,7 @@ export class Store {
     const result = entry.length > 1
       ? Promise.all(entry.map(handler => handler(payload)))
       : entry[0](payload)
-
+    console.log('result', result)
     return result.then(res => {
       try {
         this._actionSubscribers
@@ -164,6 +169,8 @@ export class Store {
     return genericSubscribe(fn, this._subscribers)
   }
 
+  // 传入一个对象{before: function(){}, after: function(){}}
+  // 出发action之前和之后会触发subscripe
   subscribeAction (fn) {
     const subs = typeof fn === 'function' ? { before: fn } : fn
     return genericSubscribe(subs, this._actionSubscribers)
@@ -303,16 +310,19 @@ function installModule (store, rootState, path, module, hot) {
   const namespace = store._modules.getNamespace(path)
 
   // register in namespace map
+  // 注册的模块有命名空间 namespaced: true
   if (module.namespaced) {
     if (store._modulesNamespaceMap[namespace] && process.env.NODE_ENV !== 'production') {
       console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
     }
+    // 保存当前module
     store._modulesNamespaceMap[namespace] = module
   }
 
   // set state
   if (!isRoot && !hot) {
     const parentState = getNestedState(rootState, path.slice(0, -1))
+    // console.log(path.slice(0, -1), parentState)
     const moduleName = path[path.length - 1]
     store._withCommit(() => {
       if (process.env.NODE_ENV !== 'production') {
@@ -322,6 +332,7 @@ function installModule (store, rootState, path, module, hot) {
           )
         }
       }
+      console.log(parentState, moduleName, module.state)
       Vue.set(parentState, moduleName, module.state)
     })
   }
@@ -356,12 +367,13 @@ function installModule (store, rootState, path, module, hot) {
 function makeLocalContext (store, namespace, path) {
   const noNamespace = namespace === ''
 
+  // commit('addFun') | dispatch('addFun')
+  // 处理dispatch&commit的type 有命名空间就把type类型拼接成 'amodules/addFun'
   const local = {
     dispatch: noNamespace ? store.dispatch : (_type, _payload, _options) => {
       const args = unifyObjectStyle(_type, _payload, _options)
       const { payload, options } = args
       let { type } = args
-
       if (!options || !options.root) {
         type = namespace + type
         if (process.env.NODE_ENV !== 'production' && !store._actions[type]) {
@@ -377,7 +389,6 @@ function makeLocalContext (store, namespace, path) {
       const args = unifyObjectStyle(_type, _payload, _options)
       const { payload, options } = args
       let { type } = args
-
       if (!options || !options.root) {
         type = namespace + type
         if (process.env.NODE_ENV !== 'production' && !store._mutations[type]) {
@@ -431,7 +442,9 @@ function makeLocalGetters (store, namespace) {
   return store._makeLocalGettersCache[namespace]
 }
 
+// 注册mutation
 function registerMutation (store, type, handler, local) {
+  // 这里赋值是引用类型，所以entry改变后，store._mutations[type]会跟着改变
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
     handler.call(store, local.state, payload)
@@ -441,6 +454,7 @@ function registerMutation (store, type, handler, local) {
 function registerAction (store, type, handler, local) {
   const entry = store._actions[type] || (store._actions[type] = [])
   entry.push(function wrappedActionHandler (payload) {
+    // 对dispatch返回值处理成promise对象
     let res = handler.call(store, {
       dispatch: local.dispatch,
       commit: local.commit,
@@ -488,10 +502,17 @@ function enableStrictMode (store) {
   }, { deep: true, sync: true })
 }
 
+// 获取父modules的State
 function getNestedState (state, path) {
-  return path.reduce((state, key) => state[key], state)
+  return path.reduce((state, key) => {
+    return state[key]
+  }, state)
 }
 
+// commit({
+//   type: 'setUser',
+//   payload: { // some data}
+// }, {someOptions: 1})
 function unifyObjectStyle (type, payload, options) {
   if (isObject(type) && type.type) {
     options = payload

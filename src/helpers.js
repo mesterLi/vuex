@@ -6,17 +6,30 @@ import { isObject } from './util'
  * @param {Object|Array} states # Object's item can be a function which accept state and getters for param, you can do something for state and getters in it.
  * @param {Object}
  */
+
+/**
+ * 把传入的对象|数组处理成数组
+ * [stateA, stateB] => [{key: 'stateA': val: 'stateA'}, {key: 'stateB', val: 'stateB'}]
+ * {stateA: function stateA(){}, stateB: function stateB(){}} => [{key: 'stateA', val: function stateA(){}}, {key: 'stateB', val: function stateB(){}}]
+ * 有namespace就用指定名字的module的state和getters，默认是根module
+ * 循环数组判断数组值的val属性，是function就调用function把state和getters带回去，否则就返回state[val]
+ * 最终mapState返回值是一个对象
+ * {stateA: function mappedStated(){return state[stateA]}, stateB: function mappedStated(){return state[stateB]}}
+ * {stateA: function mappedStated(){return stateA(state, getters)}, stateB: function mappedStated(){return stateB(state, getters)}}
+ */
 export const mapState = normalizeNamespace((namespace, states) => {
   const res = {}
   if (process.env.NODE_ENV !== 'production' && !isValidMap(states)) {
     console.error('[vuex] mapState: mapper parameter must be either an Array or an Object')
   }
   normalizeMap(states).forEach(({ key, val }) => {
+    console.log(namespace, states)
     res[key] = function mappedState () {
       let state = this.$store.state
       let getters = this.$store.getters
       if (namespace) {
         const module = getModuleByNamespace(this.$store, 'mapState', namespace)
+        console.log(module)
         if (!module) {
           return
         }
@@ -39,6 +52,14 @@ export const mapState = normalizeNamespace((namespace, states) => {
  * @param {Object|Array} mutations # Object's item can be a function which accept `commit` function as the first param, it can accept anthor params. You can commit mutation and do any other things in this function. specially, You need to pass anthor params from the mapped function.
  * @return {Object}
  */
+
+/**
+ * 把传入的数组|对象转数组
+ * ['setMutationA'] => [{key: 'setMutationA', val: 'setMutationA'}]
+ * [{setMutationA: function setMutationA(commit, payload){}}] => [{key: 'setMutationA', val: function setMutationA(commit, payload){}}]
+ * 循环数组判断数组值的val属性，是function就把commit和调用mutation时的入参通过callback带回去，就调用commit把val（mutation的方法名）和入参传入
+ */
+
 export const mapMutations = normalizeNamespace((namespace, mutations) => {
   const res = {}
   if (process.env.NODE_ENV !== 'production' && !isValidMap(mutations)) {
@@ -48,6 +69,7 @@ export const mapMutations = normalizeNamespace((namespace, mutations) => {
     res[key] = function mappedMutation (...args) {
       // Get the commit method from store
       let commit = this.$store.commit
+      console.log('commit', args)
       if (namespace) {
         const module = getModuleByNamespace(this.$store, 'mapMutations', namespace)
         if (!module) {
@@ -98,6 +120,10 @@ export const mapGetters = normalizeNamespace((namespace, getters) => {
  * @param {String} [namespace] - Module's namespace
  * @param {Object|Array} actions # Object's item can be a function which accept `dispatch` function as the first param, it can accept anthor params. You can dispatch action and do any other things in this function. specially, You need to pass anthor params from the mapped function.
  * @return {Object}
+ */
+
+/**
+ * 同mapMutations
  */
 export const mapActions = normalizeNamespace((namespace, actions) => {
   const res = {}
